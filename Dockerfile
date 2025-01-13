@@ -1,7 +1,7 @@
 FROM amd64/ubuntu:latest
 
 # Install NASM and Binutils (for ld)
-RUN apt-get update && apt-get install -y nasm binutils make vim build-essential
+RUN apt-get update && apt-get install -y nasm binutils make vim build-essential bsdmainutils
 
 # Create a directory to store your assembly file
 RUN mkdir FT_NM
