@@ -1,4 +1,4 @@
-NAME=woody_woodpacker
+NAME=ft_nm
 CC=cc
 CFLAGS=-Wall -Werror -Wextra
 SRCS=$(wildcard src/*.c)
@@ -18,7 +18,7 @@ fclean: clean
 re: fclean all
 
 dbuild:
-	docker buildx build --platform=linux/amd64 -t amd64-woody-woodpacker .
+	docker buildx build --platform=linux/amd64 -t amd64-ft-nm .
 
 drun:
-	docker run --rm -it --platform=linux/amd64 amd64-woody-woodpacker bash
+	docker run --rm -it --platform=linux/amd64 amd64-ft-nm bash
