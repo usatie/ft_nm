@@ -4,6 +4,7 @@
 #include <stdlib.h> // exit
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/mman.h>
 
 #define EI_MAG0 0
 #define EI_MAG1 1
@@ -21,7 +22,7 @@
 #define ELFCLASS64 2
 
 void usage_error() {
-	dprintf(STDERR_FILENO, "usage: ./woody_woodpacker filename\n");
+	dprintf(STDERR_FILENO, "usage: ./ft_nm filename\n");
 	exit(1);
 }
 
@@ -88,10 +89,8 @@ int main(int argc, char *argv[]) {
 		perror("open");
 		exit(1);
 	}
-	char buf[1024];
-	int rc = read(fd, buf, sizeof(ELFHeader));
-	printf("rc = %d\n", rc);
-	ELFHeader *h = (ELFHeader *)buf;
+	void *map = mmap(NULL, 4096, PROT_READ, MAP_PRIVATE, fd, 0);
+	ELFHeader *h = (ELFHeader *)map;
 	print_elf_header(h);
 	if (!is_elf(h)) {
 		dprintf(STDERR_FILENO, "Not an ELF file\n");
