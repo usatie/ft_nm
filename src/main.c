@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 
 #define EI_MAG0 0
 #define EI_MAG1 1
@@ -43,6 +44,31 @@ typedef struct ELFHeader {
 	uint16_t e_shstrndx;
 } ELFHeader;
 
+#define ET_NONE 0
+#define ET_REL 1
+#define ET_EXEC 2
+#define ET_DYN 3
+#define ET_CORE 4
+#define ET_LOOS 0xfe00
+#define ET_HIOS 0xfeff
+#define ET_LOPROC 0xff00
+#define ET_HIPROC 0xffff
+
+char * string_of_e_type(uint16_t e_type) {
+	switch (e_type) {
+		case ET_NONE: return "ET_NONE";
+		case ET_REL: return "ET_REL";
+		case ET_EXEC: return "ET_EXEC";
+		case ET_DYN: return "ET_DYN";
+		case ET_CORE: return "ET_CORE";
+		case ET_LOOS: return "ET_LOOS";
+		case ET_HIOS: return "ET_HIOS";
+		case ET_LOPROC: return "ET_LOPROC";
+		case ET_HIPROC: return "ET_HIPROC";
+		default: return "Unknown";
+	}
+}
+
 void print_elf_header(ELFHeader *h) {
 	printf("e_ident:     ");
 	for (int i = 0; i < 16; ++i) {
@@ -51,7 +77,7 @@ void print_elf_header(ELFHeader *h) {
 		if (i == 7) printf(" ");
 	}
 	printf("\n");
-	printf("e_type:      0x%x\n", h->e_type);
+	printf("e_type:      0x%x (%s)\n", h->e_type, string_of_e_type(h->e_type));
 	printf("e_machine:   0x%x\n", h->e_machine);
 	printf("e_version:   0x%x\n", h->e_version);
 	printf("e_entry:     0x%lx\n", h->e_entry);
@@ -89,7 +115,13 @@ int main(int argc, char *argv[]) {
 		perror("open");
 		exit(1);
 	}
-	void *map = mmap(NULL, 4096, PROT_READ, MAP_PRIVATE, fd, 0);
+	struct stat st;
+	if (fstat(fd, &st) < 0) {
+		perror("fstat");
+		exit(1);
+	}
+	printf("File size: %ld\n", st.st_size);
+	void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	ELFHeader *h = (ELFHeader *)map;
 	print_elf_header(h);
 	if (!is_elf(h)) {
