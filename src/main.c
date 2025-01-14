@@ -44,6 +44,19 @@ typedef struct ELFHeader {
 	uint16_t e_shstrndx;
 } ELFHeader;
 
+typedef struct SectionHeaderTableEntry {
+	uint32_t sh_name;
+	uint32_t sh_type;
+	uint64_t sh_flags;
+	uint64_t sh_addr;
+	uint64_t sh_offset;
+	uint64_t sh_size;
+	uint32_t sh_link;
+	uint32_t sh_info;
+	uint64_t sh_addralign;
+	uint64_t sh_entsize;
+} SectionHeaderTableEntry;
+
 #define ET_NONE 0
 #define ET_REL 1
 #define ET_EXEC 2
@@ -135,6 +148,20 @@ int main(int argc, char *argv[]) {
 	if (!is_64bit(h)) {
 		dprintf(STDERR_FILENO, "File architecture not suported. x86_64 only\n");
 		exit(1);
+	}
+	SectionHeaderTableEntry *sht = (SectionHeaderTableEntry *)(map + h->e_shoff);
+	for (int i = 0; i < h->e_shnum; ++i) {
+		printf("Section %d\n", i);
+		printf("sh_name:      0x%x\n", sht[i].sh_name);
+		printf("sh_type:      0x%x\n", sht[i].sh_type);
+		printf("sh_flags:     0x%lx\n", sht[i].sh_flags);
+		printf("sh_addr:      0x%lx\n", sht[i].sh_addr);
+		printf("sh_offset:    0x%lx\n", sht[i].sh_offset);
+		printf("sh_size:      0x%lx\n", sht[i].sh_size);
+		printf("sh_link:      0x%x\n", sht[i].sh_link);
+		printf("sh_info:      0x%x\n", sht[i].sh_info);
+		printf("sh_addralign: 0x%lx\n", sht[i].sh_addralign);
+		printf("sh_entsize:   0x%lx\n", sht[i].sh_entsize);
 	}
 	close(fd);
 	return 0;
