@@ -122,6 +122,10 @@ int main(int argc, char *argv[]) {
 	}
 	printf("File size: %ld\n", st.st_size);
 	void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (map == MAP_FAILED) {
+		perror("mmap");
+		exit(1);
+	}
 	ELFHeader *h = (ELFHeader *)map;
 	print_elf_header(h);
 	if (!is_elf(h)) {
