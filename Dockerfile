@@ -1,4 +1,4 @@
-FROM amd64/ubuntu:latest
+FROM amd64/ubuntu:22.04
 
 # Install NASM and Binutils (for ld)
 RUN apt-get update && apt-get install -y nasm binutils make vim build-essential bsdmainutils

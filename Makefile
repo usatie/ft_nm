@@ -3,15 +3,11 @@ CC=cc
 CFLAGS=-Wall -Werror -Wextra
 SRCS=$(wildcard src/*.c)
 OBJS=$(SRCS:%.c=%.o)
-HELLO=hello
 
-all: $(NAME) $(HELLO)
+all: $(NAME)
 
 $(NAME): $(OBJS)
 	$(CC) -o $(NAME) $(OBJS) $(CFLAGS)
-
-$(HELLO): hello.c
-	$(CC) -o $(HELLO) hello.c
 
 clean:
 	$(RM) $(OBJS)
@@ -28,4 +24,4 @@ drun:
 	docker run --rm -it --platform=linux/amd64 amd64-ft-nm bash
 
 test: all
-	./test.sh
+	$(MAKE) run -C test
