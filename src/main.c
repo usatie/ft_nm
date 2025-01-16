@@ -9,6 +9,8 @@
 #include <string.h>
 #include <elf.h>
 
+#define DEBUG 0
+
 void usage_error() {
 	dprintf(STDERR_FILENO, "usage: ./ft_nm filename\n");
 	exit(1);
@@ -200,7 +202,6 @@ int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		usage_error();
 	}
-	printf("sizeof(Elf64_Ehdr): %lu\n", sizeof(Elf64_Ehdr));
 	int fd = open(argv[1], O_RDONLY);
 	if (fd < 0) {
 		perror("open");
@@ -211,15 +212,19 @@ int main(int argc, char *argv[]) {
 		perror("fstat");
 		exit(1);
 	}
+#if DEBUG
 	printf("File size: %ld\n", st.st_size);
+#endif
 	void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED) {
 		perror("mmap");
 		exit(1);
 	}
 	Elf64_Ehdr *h = (Elf64_Ehdr *)map;
+#if DEBUG
 	// print ELF header
 	print_elf_header(h);
+#endif
 	if (!is_elf(h)) {
 		dprintf(STDERR_FILENO, "Not an ELF file\n");
 		exit(1);
@@ -235,7 +240,9 @@ int main(int argc, char *argv[]) {
 	char *strtab = NULL;
 	Elf64_Shdr *symtab_header = NULL;
 	for (int i = 0; i < h->e_shnum; ++i) {
+#if DEBUG
 		print_section_header(sht, shstrtab, i);
+#endif
 		if (sht[i].sh_type == SHT_SYMTAB) {
 			symtab_header = &sht[i];
 		}
@@ -258,7 +265,9 @@ int main(int argc, char *argv[]) {
 	}
 	memcpy(symtab, map + symtab_header->sh_offset, symtab_header->sh_size);
 	int num_symbols = symtab_header->sh_size / sizeof(Elf64_Sym);
+#if DEBUG
 	print_symbols(symtab, strtab, num_symbols);
+#endif
 	sort_symbols(symtab, num_symbols, strtab);
 	for (int i = 0; i < num_symbols; ++i) {
 		Elf64_Sym *sym = &symtab[i];
