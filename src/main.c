@@ -7,79 +7,12 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <string.h>
-
-#define EI_MAG0 0
-#define EI_MAG1 1
-#define EI_MAG2 2
-#define EI_MAG3 3
-#define EI_CLASS 4
-#define EI_DATA 5
-#define EI_VERSION 6
-#define EI_OSABI 7
-#define EI_ABIVERSION 8
-#define EI_PAD 9
-
-#define ELFCLASSNONE 0
-#define ELFCLASS32 1
-#define ELFCLASS64 2
+#include <elf.h>
 
 void usage_error() {
 	dprintf(STDERR_FILENO, "usage: ./ft_nm filename\n");
 	exit(1);
 }
-
-typedef struct ELFHeader {
-	uint8_t e_ident[16];
-	uint16_t e_type;
-	uint16_t e_machine;
-	uint32_t e_version;
-	uint64_t e_entry;
-	uint64_t e_phoff;
-	uint64_t e_shoff;
-	uint32_t e_flags;
-	uint16_t e_ehsize;
-	uint16_t e_phentsize;
-	uint16_t e_phnum;
-	uint16_t e_shentsize;
-	uint16_t e_shnum;
-	uint16_t e_shstrndx;
-} ELFHeader;
-
-typedef struct SectionHeaderTableEntry {
-	uint32_t sh_name;
-	uint32_t sh_type;
-	uint64_t sh_flags;
-	uint64_t sh_addr;
-	uint64_t sh_offset;
-	uint64_t sh_size;
-	uint32_t sh_link;
-	uint32_t sh_info;
-	uint64_t sh_addralign;
-	uint64_t sh_entsize;
-} SectionHeaderTableEntry;
-
-typedef struct SymbolTableEntry {
-	uint32_t	st_name;
-	uint8_t	st_info;
-	uint8_t	st_other;
-	uint16_t	st_shndx;
-	uint64_t	st_value;
-	uint64_t	st_size;
-} SymbolTableEntry;
-
-#define ELF64_ST_BIND(i)   ((i)>>4)
-#define ELF64_ST_TYPE(i)   ((i)&0xf)
-#define ELF64_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
-
-#define ET_NONE 0
-#define ET_REL 1
-#define ET_EXEC 2
-#define ET_DYN 3
-#define ET_CORE 4
-#define ET_LOOS 0xfe00
-#define ET_HIOS 0xfeff
-#define ET_LOPROC 0xff00
-#define ET_HIPROC 0xffff
 
 char * string_of_e_type(uint16_t e_type) {
 	switch (e_type) {
@@ -95,26 +28,6 @@ char * string_of_e_type(uint16_t e_type) {
 		default: return "Unknown";
 	}
 }
-
-#define SHT_NULL          0x00
-#define SHT_PROGBITS      0x01
-#define SHT_SYMTAB        0x02
-#define SHT_STRTAB        0x03
-#define SHT_RELA          0x04
-#define SHT_HASH          0x05
-#define SHT_DYNAMIC       0x06
-#define SHT_NOTE          0x07
-#define SHT_NOBITS        0x08
-#define SHT_REL           0x09
-#define SHT_SHLIB         0x0a
-#define SHT_DYNSYM        0x0b
-#define SHT_INIT_ARRAY    0x0e
-#define SHT_FINI_ARRAY    0x0f
-#define SHT_PREINIT_ARRAY 0x10
-#define SHT_GROUP         0x11
-#define SHT_SYMTAB_SHNDX  0x12
-#define SHT_NUM           0x13
-
 
 char * string_of_sh_type(uint32_t sh_type) {
 	switch (sh_type) {
@@ -140,7 +53,7 @@ char * string_of_sh_type(uint32_t sh_type) {
 	}
 }
 
-void print_elf_header(ELFHeader *h) {
+void print_elf_header(Elf64_Ehdr *h) {
 	printf("e_ident:     ");
 	for (int i = 0; i < 16; ++i) {
 		printf("%02x", h->e_ident[i]);
@@ -163,20 +76,7 @@ void print_elf_header(ELFHeader *h) {
 	printf("e_shstrndx:  0x%x\n", h->e_shstrndx);
 }
 
-bool is_elf(ELFHeader *h) {
-	if (h->e_ident[EI_MAG0] != 0x7f) return false;
-	if (h->e_ident[EI_MAG1] != 'E') return false;
-	if (h->e_ident[EI_MAG2] != 'L') return false;
-	if (h->e_ident[EI_MAG3] != 'F') return false;
-	return true;
-}
-
-bool is_64bit(ELFHeader *h) {
-	if (h->e_ident[EI_CLASS] != ELFCLASS64) return false;
-	return true;
-}
-
-void print_section_header(const SectionHeaderTableEntry *sht, const char *shstrtab, int i) {
+void print_section_header(const Elf64_Shdr *sht, const char *shstrtab, int i) {
 	const char *name = shstrtab + sht[i].sh_name;
 	printf("Section %d (%s)\n", i, name);
 	printf("\tsh_name:      0x%x\n", sht[i].sh_name);
@@ -190,18 +90,6 @@ void print_section_header(const SectionHeaderTableEntry *sht, const char *shstrt
 	printf("\tsh_addralign: 0x%lx\n", sht[i].sh_addralign);
 	printf("\tsh_entsize:   0x%lx\n", sht[i].sh_entsize);
 	printf("\n");
-}
-
-void sort_symbols(SymbolTableEntry *symtab, int num_symbols, char *strtab) {
-	for (int i = 0; i < num_symbols; ++i) {
-		for (int j = i + 1; j < num_symbols; ++j) {
-			if (strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name) > 0) {
-				SymbolTableEntry tmp = symtab[i];
-				symtab[i] = symtab[j];
-				symtab[j] = tmp;
-			}
-		}
-	}
 }
 
 char *string_of_symbol_type(uint8_t st_info) {
@@ -228,31 +116,45 @@ char *string_of_symbol_binding(uint8_t st_info) {
 	}
 }
 
-#define SHN_UNDEF 0
-#define SHN_ABS 0xfff1
-#define SHN_COMMON 0xfff2
+void print_symbols(Elf64_Sym *symtab, char *strtab, int num_symbols) {
+	for (int i = 0; i < num_symbols; ++i) {
+			printf("Symbol %d\n", i);
+			printf("\tst_name: 0x%x (%s)\n", symtab[i].st_name, strtab + symtab[i].st_name);
+			printf("\tst_info: 0x%x\n", symtab[i].st_info);
+			printf("\tst_other: 0x%x\n", symtab[i].st_other);
+			printf("\tst_shndx: 0x%x\n", symtab[i].st_shndx);
+			printf("\tst_value: 0x%lx\n", symtab[i].st_value);
+			printf("\tst_size: 0x%lx\n", symtab[i].st_size);
+			printf("\n");
+	}
+}
 
-#define STB_LOCAL 0
-#define STB_GLOBAL 1
-#define STB_WEAK 2
-#define STB_LOPROC 13
-#define STB_HIPROC 15
+bool is_elf(Elf64_Ehdr *h) {
+	if (h->e_ident[EI_MAG0] != 0x7f) return false;
+	if (h->e_ident[EI_MAG1] != 'E') return false;
+	if (h->e_ident[EI_MAG2] != 'L') return false;
+	if (h->e_ident[EI_MAG3] != 'F') return false;
+	return true;
+}
 
-#define STT_NOTYPE 0
-#define STT_OBJECT 1
-#define STT_FUNC 2
-#define STT_SECTION 3
-#define STT_FILE 4
-#define STT_LOPROC 13
-#define STT_HIPROC 15
+bool is_64bit(Elf64_Ehdr *h) {
+	if (h->e_ident[EI_CLASS] != ELFCLASS64) return false;
+	return true;
+}
 
-#define SHF_WRITE 0x1
-#define SHF_ALLOC 0x2
-#define SHF_EXECINSTR 0x4
+void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
+	for (int i = 0; i < num_symbols; ++i) {
+		for (int j = i + 1; j < num_symbols; ++j) {
+			if (strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name) > 0) {
+				Elf64_Sym tmp = symtab[i];
+				symtab[i] = symtab[j];
+				symtab[j] = tmp;
+			}
+		}
+	}
+}
 
-
-
-char get_symbol_type(const SymbolTableEntry *sym, const SectionHeaderTableEntry *shdrs) {
+char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
     unsigned char bind = ELF64_ST_BIND(sym->st_info);
     unsigned char type = ELF64_ST_TYPE(sym->st_info);
 	(void)type;
@@ -261,7 +163,7 @@ char get_symbol_type(const SymbolTableEntry *sym, const SectionHeaderTableEntry 
 		// TODO: 'W' if a default value is specified
 		return (sym->st_value != 0) ? 'W' : 'w';
 	}
-	const SectionHeaderTableEntry *sec = &shdrs[sym->st_shndx];
+	const Elf64_Shdr *sec = &shdrs[sym->st_shndx];
     // Text section
     if (sec->sh_flags & SHF_EXECINSTR) {
         return (bind == STB_LOCAL) ? 't' : 'T';
@@ -294,24 +196,11 @@ char get_symbol_type(const SymbolTableEntry *sym, const SectionHeaderTableEntry 
     return '?'; // Unknown type
 }
 
-void print_symbols(SymbolTableEntry *symtab, char *strtab, int num_symbols) {
-	for (int i = 0; i < num_symbols; ++i) {
-			printf("Symbol %d\n", i);
-			printf("\tst_name: 0x%x (%s)\n", symtab[i].st_name, strtab + symtab[i].st_name);
-			printf("\tst_info: 0x%x\n", symtab[i].st_info);
-			printf("\tst_other: 0x%x\n", symtab[i].st_other);
-			printf("\tst_shndx: 0x%x\n", symtab[i].st_shndx);
-			printf("\tst_value: 0x%lx\n", symtab[i].st_value);
-			printf("\tst_size: 0x%lx\n", symtab[i].st_size);
-			printf("\n");
-	}
-}
-
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		usage_error();
 	}
-	printf("sizeof(ELFHeader): %lu\n", sizeof(ELFHeader));
+	printf("sizeof(Elf64_Ehdr): %lu\n", sizeof(Elf64_Ehdr));
 	int fd = open(argv[1], O_RDONLY);
 	if (fd < 0) {
 		perror("open");
@@ -328,7 +217,7 @@ int main(int argc, char *argv[]) {
 		perror("mmap");
 		exit(1);
 	}
-	ELFHeader *h = (ELFHeader *)map;
+	Elf64_Ehdr *h = (Elf64_Ehdr *)map;
 	// print ELF header
 	print_elf_header(h);
 	if (!is_elf(h)) {
@@ -340,11 +229,11 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	// print section headers
-	SectionHeaderTableEntry *sht = (SectionHeaderTableEntry *)(map + h->e_shoff);
-	SectionHeaderTableEntry *shstrtab_header = &sht[h->e_shstrndx];
+	Elf64_Shdr *sht = (Elf64_Shdr *)(map + h->e_shoff);
+	Elf64_Shdr *shstrtab_header = &sht[h->e_shstrndx];
 	char *shstrtab = (char *)(map + shstrtab_header->sh_offset);
 	char *strtab = NULL;
-	SectionHeaderTableEntry *symtab_header = NULL;
+	Elf64_Shdr *symtab_header = NULL;
 	for (int i = 0; i < h->e_shnum; ++i) {
 		print_section_header(sht, shstrtab, i);
 		if (sht[i].sh_type == SHT_SYMTAB) {
@@ -362,17 +251,17 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	// In order to sort the symbols, we need to read the entire symbol table
-	SymbolTableEntry *symtab = malloc(symtab_header->sh_size);
+	Elf64_Sym *symtab = malloc(symtab_header->sh_size);
 	if (!symtab) {
 		perror("malloc");
 		exit(1);
 	}
 	memcpy(symtab, map + symtab_header->sh_offset, symtab_header->sh_size);
-	int num_symbols = symtab_header->sh_size / sizeof(SymbolTableEntry);
+	int num_symbols = symtab_header->sh_size / sizeof(Elf64_Sym);
 	print_symbols(symtab, strtab, num_symbols);
 	sort_symbols(symtab, num_symbols, strtab);
 	for (int i = 0; i < num_symbols; ++i) {
-		SymbolTableEntry *sym = &symtab[i];
+		Elf64_Sym *sym = &symtab[i];
 		if (sym->st_name == 0) continue;
 		const char *name = strtab + sym->st_name;
 		char type = get_symbol_type(sym, sht);
