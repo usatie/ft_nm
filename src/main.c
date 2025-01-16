@@ -362,10 +362,11 @@ int main(int argc, char *argv[]) {
 		if (sym->st_name == 0) continue;
 		const char *name = strtab + sym->st_name;
 		char type = get_symbol_type(sym, sht);
+		if (type == 'A') continue; // Debugger only?
 		if (sym->st_value) {
-				printf("%016lx (%c) %s\n", sym->st_value, type, name);
+				printf("%016lx %c %s\n", sym->st_value, type, name);
 		} else {
-				printf("%s (%c) %s\n", "                ", type, name);
+				printf("%s %c %s\n", "                ", type, name);
 		}
 		/*
 		printf("Symbol %d\n", i);
