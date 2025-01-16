@@ -253,13 +253,17 @@ char *string_of_symbol_binding(uint8_t st_info) {
 
 
 char get_symbol_type(const SymbolTableEntry *sym, const SectionHeaderTableEntry *shdrs) {
-    if (sym->st_shndx == SHN_UNDEF) return 'U';
-    if (sym->st_shndx == SHN_ABS) return 'A';
-    if (sym->st_shndx == SHN_COMMON) return 'C';
-
     unsigned char bind = ELF64_ST_BIND(sym->st_info);
     unsigned char type = ELF64_ST_TYPE(sym->st_info);
 	(void)type;
+	if (bind == STB_WEAK) {
+		// TODO: 'W' if a default value is specified
+		return (sym->st_value != 0) ? 'W' : 'w';
+	}
+
+    if (sym->st_shndx == SHN_UNDEF) return 'U';
+    if (sym->st_shndx == SHN_ABS) return 'A';
+    if (sym->st_shndx == SHN_COMMON) return 'C';
 
     // Example: Check section type for BSS
     if (shdrs[sym->st_shndx].sh_type == SHT_NOBITS &&
