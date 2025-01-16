@@ -26,3 +26,6 @@ dbuild:
 
 drun:
 	docker run --rm -it --platform=linux/amd64 amd64-ft-nm bash
+
+test:
+	./test.sh
