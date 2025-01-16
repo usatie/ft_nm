@@ -256,35 +256,55 @@ char get_symbol_type(const SymbolTableEntry *sym, const SectionHeaderTableEntry 
     unsigned char bind = ELF64_ST_BIND(sym->st_info);
     unsigned char type = ELF64_ST_TYPE(sym->st_info);
 	(void)type;
+	// Weak symbol
 	if (bind == STB_WEAK) {
 		// TODO: 'W' if a default value is specified
 		return (sym->st_value != 0) ? 'W' : 'w';
+	}
+	const SectionHeaderTableEntry *sec = &shdrs[sym->st_shndx];
+    // Text section
+    if (sec->sh_flags & SHF_EXECINSTR) {
+        return (bind == STB_LOCAL) ? 't' : 'T';
+    }
+
+    // BSS
+    if ((sec->sh_type == SHT_NOBITS) &&
+        (sec->sh_flags & SHF_ALLOC) &&
+        (sec->sh_flags & SHF_WRITE)) {
+        return (bind == STB_LOCAL) ? 'b' : 'B';
+    }
+
+	// Data sections (flags: Writable and Allocated, but not Executable)
+	//               (type: not NOBITS)
+    if ((sec->sh_type != SHT_NOBITS) &&
+        (sec->sh_flags & SHF_ALLOC) &&
+        (sec->sh_flags & SHF_WRITE)) {
+		return (bind == STB_LOCAL) ? 'd' : 'D';
+	}
+	// Read-only data sections (flags: Allocated, but not Writable nor Executable)
+	if ((sec->sh_type == SHT_PROGBITS || sec->sh_type == SHT_NOTE) &&
+		(sec->sh_flags & SHF_ALLOC)) {
+		return (bind == STB_LOCAL) ? 'r' : 'R';
 	}
 
     if (sym->st_shndx == SHN_UNDEF) return 'U';
     if (sym->st_shndx == SHN_ABS) return 'A';
     if (sym->st_shndx == SHN_COMMON) return 'C';
 
-    // Example: Check section type for BSS
-    if (shdrs[sym->st_shndx].sh_type == SHT_NOBITS &&
-        (shdrs[sym->st_shndx].sh_flags & SHF_ALLOC) &&
-        (shdrs[sym->st_shndx].sh_flags & SHF_WRITE)) {
-        return (bind == STB_LOCAL) ? 'b' : 'B';
-    }
-
-    // Text section
-    if (shdrs[sym->st_shndx].sh_flags & SHF_EXECINSTR) {
-        return (bind == STB_LOCAL) ? 't' : 'T';
-    }
-
-    // Data section
-    if (shdrs[sym->st_shndx].sh_type == SHT_PROGBITS &&
-        (shdrs[sym->st_shndx].sh_flags & SHF_ALLOC) &&
-        (shdrs[sym->st_shndx].sh_flags & SHF_WRITE)) {
-        return (bind == STB_LOCAL) ? 'd' : 'D';
-    }
-
     return '?'; // Unknown type
+}
+
+void print_symbols(SymbolTableEntry *symtab, char *strtab, int num_symbols) {
+	for (int i = 0; i < num_symbols; ++i) {
+			printf("Symbol %d\n", i);
+			printf("\tst_name: 0x%x (%s)\n", symtab[i].st_name, strtab + symtab[i].st_name);
+			printf("\tst_info: 0x%x\n", symtab[i].st_info);
+			printf("\tst_other: 0x%x\n", symtab[i].st_other);
+			printf("\tst_shndx: 0x%x\n", symtab[i].st_shndx);
+			printf("\tst_value: 0x%lx\n", symtab[i].st_value);
+			printf("\tst_size: 0x%lx\n", symtab[i].st_size);
+			printf("\n");
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -341,7 +361,6 @@ int main(int argc, char *argv[]) {
 		dprintf(STDERR_FILENO, "No symbol table found\n");
 		exit(1);
 	}
-	printf("Symbol table:\n");
 	// In order to sort the symbols, we need to read the entire symbol table
 	SymbolTableEntry *symtab = malloc(symtab_header->sh_size);
 	if (!symtab) {
@@ -350,17 +369,8 @@ int main(int argc, char *argv[]) {
 	}
 	memcpy(symtab, map + symtab_header->sh_offset, symtab_header->sh_size);
 	int num_symbols = symtab_header->sh_size / sizeof(SymbolTableEntry);
+	print_symbols(symtab, strtab, num_symbols);
 	sort_symbols(symtab, num_symbols, strtab);
-	for (int i = 0; i < num_symbols; ++i) {
-			printf("Symbol %d\n", i);
-			printf("\tst_name: 0x%x (%s)\n", symtab[i].st_name, strtab + symtab[i].st_name);
-			printf("\tst_info: 0x%x\n", symtab[i].st_info);
-			printf("\tst_other: 0x%x\n", symtab[i].st_other);
-			printf("\tst_shndx: 0x%x\n", symtab[i].st_shndx);
-			printf("\tst_value: 0x%lx\n", symtab[i].st_value);
-			printf("\tst_size: 0x%lx\n", symtab[i].st_size);
-			printf("\n");
-	}
 	for (int i = 0; i < num_symbols; ++i) {
 		SymbolTableEntry *sym = &symtab[i];
 		if (sym->st_name == 0) continue;
@@ -372,16 +382,6 @@ int main(int argc, char *argv[]) {
 		} else {
 				printf("%s %c %s\n", "                ", type, name);
 		}
-		/*
-		printf("Symbol %d\n", i);
-		printf("\tst_name: 0x%x (%s)\n", symtab[i].st_name, strtab + symtab[i].st_name);
-		printf("\tst_info: 0x%x\n", symtab[i].st_info);
-		printf("\tst_other: 0x%x\n", symtab[i].st_other);
-		printf("\tst_shndx: 0x%x\n", symtab[i].st_shndx);
-		printf("\tst_value: 0x%lx\n", symtab[i].st_value);
-		printf("\tst_size: 0x%lx\n", symtab[i].st_size);
-		printf("\n");
-		*/
 	}
 	close(fd);
 	free(symtab);
