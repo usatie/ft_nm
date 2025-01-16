@@ -275,7 +275,7 @@ int main(int argc, char *argv[]) {
 		const char *name = strtab + sym->st_name;
 		char type = get_symbol_type(sym, sht);
 		if (type == 'A') continue; // Debugger only?
-		if (sym->st_value) {
+		if (type != 'U' && type != 'w') {
 				printf("%016lx %c %s\n", sym->st_value, type, name);
 		} else {
 				printf("%s %c %s\n", "                ", type, name);
