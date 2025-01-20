@@ -3,11 +3,15 @@ CC=cc
 CFLAGS=-Wall -Werror -Wextra
 SRCS=$(wildcard src/*.c)
 OBJS=$(SRCS:%.c=%.o)
+INC=-I./include
 
 all: $(NAME)
 
 $(NAME): $(OBJS)
 	$(CC) -o $(NAME) $(OBJS) $(CFLAGS)
+
+%.o: %.c
+	$(CC) -c $< -o $@ $(CFLAGS) $(INC)
 
 clean:
 	$(RM) $(OBJS)
