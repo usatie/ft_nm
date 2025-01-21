@@ -14,6 +14,39 @@
 #include "debug.h"
 #endif
 
+// Boundary check macros
+#define CHECK_OFFSET_SIZE(offset, size, msg)                                   \
+  if ((__off_t)(offset + size) > st.st_size) {                                 \
+    ft_dprintf(STDERR_FILENO, "%s\n", msg);                                    \
+    exit(1);                                                                   \
+  }
+
+#define CHECK_SIZE(size, msg)                                                  \
+  if ((__off_t)(size) > st.st_size) {                                          \
+    ft_dprintf(STDERR_FILENO, "%s\n", msg);                                    \
+    exit(1);                                                                   \
+  }
+
+#define CHECK_BOUNDARY(ptr, index, entsize)                                    \
+  if ((__off_t)(((void *)ptr - (void *)map) + (index + 1) * entsize) >         \
+      st.st_size) {                                                            \
+    ft_dprintf(STDERR_FILENO, "CHECK_BOUNDARY failed: %s %s %s\n", #ptr,       \
+               #index, #entsize);                                              \
+    exit(1);                                                                   \
+  }
+
+#define CHECK_CSTRING_BOUNDARY(str)                                            \
+  {                                                                            \
+    const char *tmp = str;                                                     \
+    while (*tmp && (__off_t)((void *)tmp - (void *)map) < st.st_size) {        \
+      ++tmp;                                                                   \
+    }                                                                          \
+    if ((__off_t)(void *)((void *)tmp - (void *)map) >= st.st_size) {          \
+      ft_dprintf(STDERR_FILENO, "CHECK_CSTRING_BOUNDARY failed: %s\n", #str);  \
+      exit(1);                                                                 \
+    }                                                                          \
+  }
+
 void usage_error() {
   ft_dprintf(STDERR_FILENO, "usage: ./ft_nm filename\n");
   exit(1);
@@ -95,26 +128,6 @@ char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
   return '?'; // Unknown type
 }
 
-#define CHECK_BOUNDARY(ptr, index, entsize)                                    \
-  if ((__off_t)(((char *)ptr - (char *)map) + (index + 1) * entsize) >         \
-      st.st_size) {                                                            \
-    ft_dprintf(STDERR_FILENO, "CHECK_BOUNDARY failed %s %s %s\n", #ptr,        \
-               #index, #entsize);                                              \
-    exit(1);                                                                   \
-  }
-
-#define CHECK_CSTRING_BOUNDARY(str)                                            \
-  {                                                                            \
-    char *tmp = str;                                                           \
-    while (*tmp && (__off_t)(tmp - (char *)map) < st.st_size) {                \
-      ++tmp;                                                                   \
-    }                                                                          \
-    if ((__off_t)(tmp - (char *)map) >= st.st_size) {                          \
-      ft_dprintf(STDERR_FILENO, "CHECK_CSTRING_BOUNDARY failed\n");            \
-      exit(1);                                                                 \
-    }                                                                          \
-  }
-
 int main(int argc, char *argv[]) {
   if (argc != 2) {
     usage_error();
@@ -141,6 +154,8 @@ int main(int argc, char *argv[]) {
     perror("mmap");
     exit(1);
   }
+  // Check if we can safely read the ELF header
+  CHECK_SIZE(sizeof(Elf64_Ehdr), "File too small for ELF header");
   Elf64_Ehdr *h = (Elf64_Ehdr *)map;
 #if DEBUG
   // print ELF header
@@ -159,24 +174,37 @@ int main(int argc, char *argv[]) {
     ft_dprintf(STDERR_FILENO, "Invalid section header size\n");
     exit(1);
   }
+  // Check if section header table is within bounds
+  CHECK_OFFSET_SIZE(h->e_shoff, h->e_shnum * h->e_shentsize,
+                    "Section header table extends beyond file");
   Elf64_Shdr *sht = (Elf64_Shdr *)(map + h->e_shoff);
   CHECK_BOUNDARY(sht, h->e_shstrndx, h->e_shentsize);
   Elf64_Shdr *shstrtab_header = &sht[h->e_shstrndx];
+  // Check if section string table is within bounds
+  CHECK_OFFSET_SIZE(shstrtab_header->sh_offset, shstrtab_header->sh_size,
+                    "Section string table extends beyond file");
   char *shstrtab = (char *)(map + shstrtab_header->sh_offset);
   char *strtab = NULL;
   Elf64_Shdr *symtab_header = NULL;
   for (int i = 0; i < h->e_shnum; ++i) {
+    CHECK_BOUNDARY(sht, i, h->e_shentsize);
+    Elf64_Shdr *current_shdr = &sht[i];
 #if DEBUG
     print_section_header(sht, shstrtab, i);
 #endif
-    CHECK_BOUNDARY(sht, i, h->e_shentsize);
-    if (sht[i].sh_type == SHT_SYMTAB) {
-      symtab_header = &sht[i];
+    if (current_shdr->sh_type == SHT_SYMTAB) {
+      symtab_header = current_shdr;
+      // Check if symbol table is within bounds
+      CHECK_OFFSET_SIZE(symtab_header->sh_offset, symtab_header->sh_size,
+                        "Symbol table extends beyond file");
     }
-    if (sht[i].sh_type == SHT_STRTAB) {
-      CHECK_CSTRING_BOUNDARY(shstrtab + sht[i].sh_name);
-      if (ft_strcmp(shstrtab + sht[i].sh_name, ".strtab") == 0) {
-        strtab = (char *)(map + sht[i].sh_offset);
+    if (current_shdr->sh_type == SHT_STRTAB) {
+      CHECK_CSTRING_BOUNDARY(shstrtab + current_shdr->sh_name);
+      if (ft_strcmp(shstrtab + current_shdr->sh_name, ".strtab") == 0) {
+        strtab = (char *)(map + current_shdr->sh_offset);
+        // Check if string table is within bounds
+        CHECK_OFFSET_SIZE(current_shdr->sh_offset, current_shdr->sh_size,
+                          "String table extends beyond file");
       }
     }
   }
@@ -201,7 +229,14 @@ int main(int argc, char *argv[]) {
     Elf64_Sym *sym = &symtab[i];
     if (sym->st_name == 0)
       continue;
+    // Check if symbol name is within string table bounds
+    if (sym->st_name >= symtab_header->sh_size) {
+      ft_dprintf(STDERR_FILENO,
+                 "Symbol name offset extends beyond string table\n");
+      exit(1);
+    }
     const char *name = strtab + sym->st_name;
+    CHECK_CSTRING_BOUNDARY(name);
     char type_char = get_symbol_type(sym, sht);
     unsigned char type = ELF64_ST_TYPE(sym->st_info);
     if (type == STT_FILE)
