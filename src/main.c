@@ -14,6 +14,11 @@
 #include "debug.h"
 #endif
 
+// These variables are declared as global to make it easier for checking
+// boundary
+static struct stat st;
+static void *map;
+
 // Boundary check macros
 #define CHECK_OFFSET_SIZE(offset, size, msg)                                   \
   if ((__off_t)(offset + size) > st.st_size) {                                 \
@@ -72,7 +77,11 @@ bool is_64bit(Elf64_Ehdr *h) {
 
 void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
   for (int i = 0; i < num_symbols; ++i) {
+    // Check if the symbol name is within bounds
+    CHECK_CSTRING_BOUNDARY(strtab + symtab[i].st_name);
     for (int j = i + 1; j < num_symbols; ++j) {
+      // Check if the symbol name is within bounds
+      CHECK_CSTRING_BOUNDARY(strtab + symtab[j].st_name);
       int cmpval =
           ft_strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name);
       bool less = cmpval < 0 ||
@@ -86,7 +95,8 @@ void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
   }
 }
 
-char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
+char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs,
+                     int num_sections) {
   unsigned char bind = ELF64_ST_BIND(sym->st_info);
   // Weak symbol
   if (bind == STB_WEAK) {
@@ -101,6 +111,13 @@ char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
     return 'C';
   if (sym->st_shndx >= SHN_LORESERVE)
     return '?'; // TODO: Unknown type for now
+
+  // Check if section index is within bounds
+  if (sym->st_shndx >= num_sections) {
+    ft_dprintf(STDERR_FILENO, "Invalid section index: %u\n", sym->st_shndx);
+    return '?'; // Return unknown type if out of bounds
+  }
+
   const Elf64_Shdr *sec = &shdrs[sym->st_shndx];
   // Text section
   if (sec->sh_flags & SHF_EXECINSTR) {
@@ -137,7 +154,6 @@ int main(int argc, char *argv[]) {
     perror("open");
     exit(1);
   }
-  struct stat st;
   if (fstat(fd, &st) < 0) {
     perror("fstat");
     exit(1);
@@ -149,7 +165,7 @@ int main(int argc, char *argv[]) {
     ft_dprintf(STDERR_FILENO, "File too small to be an ELF file\n");
     exit(1);
   }
-  void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+  map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (map == MAP_FAILED) {
     perror("mmap");
     exit(1);
@@ -237,7 +253,7 @@ int main(int argc, char *argv[]) {
     }
     const char *name = strtab + sym->st_name;
     CHECK_CSTRING_BOUNDARY(name);
-    char type_char = get_symbol_type(sym, sht);
+    char type_char = get_symbol_type(sym, sht, h->e_shnum);
     unsigned char type = ELF64_ST_TYPE(sym->st_info);
     if (type == STT_FILE)
       continue; // FILE symbol type is for debugging
