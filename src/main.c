@@ -53,6 +53,10 @@ char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
 		// TODO: 'W' if a default value is specified
 		return (sym->st_value != 0) ? 'W' : 'w';
 	}
+    if (sym->st_shndx == SHN_UNDEF) return 'U';
+    if (sym->st_shndx == SHN_ABS) return 'A';
+    if (sym->st_shndx == SHN_COMMON) return 'C';
+	if (sym->st_shndx >= SHN_LORESERVE) return '?'; // TODO: Unknown type for now
 	const Elf64_Shdr *sec = &shdrs[sym->st_shndx];
     // Text section
     if (sec->sh_flags & SHF_EXECINSTR) {
@@ -78,10 +82,6 @@ char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
 		(sec->sh_flags & SHF_ALLOC)) {
 		return (bind == STB_LOCAL) ? 'r' : 'R';
 	}
-
-    if (sym->st_shndx == SHN_UNDEF) return 'U';
-    if (sym->st_shndx == SHN_ABS) return 'A';
-    if (sym->st_shndx == SHN_COMMON) return 'C';
 
     return '?'; // Unknown type
 }
