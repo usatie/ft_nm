@@ -8,7 +8,7 @@ LIBFT=libft/libft.a
 
 all: $(NAME)
 
-$(NAME): $(OBJS) $(LIBFT)
+$(NAME): $(LIBFT) $(OBJS)
 	$(CC) -o $(NAME) $(OBJS) $(CFLAGS) $(LIBFT)
 
 %.o: %.c
