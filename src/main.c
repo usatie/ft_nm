@@ -75,26 +75,28 @@ bool is_64bit(Elf64_Ehdr *h) {
   return true;
 }
 
-// Apparently, the nm command at school is ignoring the underscore when comparing strings
-// ➜  ft_nm git:(main) ✗ nm --version
-// GNU nm (GNU Binutils for Ubuntu) 2.38
-// Copyright (C) 2022 Free Software Foundation, Inc.
-// This program is free software; you may redistribute it under the terms of
-// the GNU General Public License version 3 or (at your option) any later version.
-// This program has absolutely no warranty.
-// ➜  ft_nm git:(main) ✗ uname -a
-// Linux c4r3s13.42tokyo.jp 6.8.0-51-generic #52~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Mon Dec  9 15:00:52 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+// Apparently, the nm command at school is ignoring the underscore when
+// comparing strings ➜  ft_nm git:(main) ✗ nm --version GNU nm (GNU Binutils for
+// Ubuntu) 2.38 Copyright (C) 2022 Free Software Foundation, Inc. This program
+// is free software; you may redistribute it under the terms of the GNU General
+// Public License version 3 or (at your option) any later version. This program
+// has absolutely no warranty. ➜  ft_nm git:(main) ✗ uname -a Linux
+// c4r3s13.42tokyo.jp 6.8.0-51-generic #52~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC
+// Mon Dec  9 15:00:52 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
 int bsd_stricmp(const char *s1, const char *s2) {
-    while (*s1 || *s2) {
-	while (*s1 == '_') s1++;
-	while (*s2 == '_') s2++;
-	if (ft_tolower(*s1) != ft_tolower(*s2)) {
-	  return ft_tolower(*(unsigned char *)s1) - ft_tolower(*(unsigned char *)s2);
-	}
-	s1++;
-	s2++;
+  while (*s1 || *s2) {
+    while (*s1 == '_')
+      s1++;
+    while (*s2 == '_')
+      s2++;
+    if (ft_tolower(*s1) != ft_tolower(*s2)) {
+      return ft_tolower(*(unsigned char *)s1) -
+             ft_tolower(*(unsigned char *)s2);
     }
-    return 0;
+    s1++;
+    s2++;
+  }
+  return 0;
 }
 
 void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
