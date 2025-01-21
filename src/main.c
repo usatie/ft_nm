@@ -1,12 +1,13 @@
 #include <fcntl.h>
 #include <unistd.h>
-#include <stdio.h>
+#include <stdio.h> // perror, strerror, STDERR_FILENO
 #include <stdlib.h> // exit
 #include <stdbool.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <string.h>
 #include <elf.h>
+#include "libft.h"
+#include "ft_printf.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -14,7 +15,7 @@
 #endif
 
 void usage_error() {
-	dprintf(STDERR_FILENO, "usage: ./ft_nm filename\n");
+	ft_dprintf(STDERR_FILENO, "usage: ./ft_nm filename\n");
 	exit(1);
 }
 
@@ -34,7 +35,7 @@ bool is_64bit(Elf64_Ehdr *h) {
 void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
 	for (int i = 0; i < num_symbols; ++i) {
 		for (int j = i + 1; j < num_symbols; ++j) {
-			if (strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name) > 0) {
+			if (ft_strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name) > 0) {
 				Elf64_Sym tmp = symtab[i];
 				symtab[i] = symtab[j];
 				symtab[j] = tmp;
@@ -100,7 +101,7 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 #if DEBUG
-	printf("File size: %ld\n", st.st_size);
+	ft_printf("File size: %ld\n", st.st_size);
 #endif
 	void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED) {
@@ -113,11 +114,11 @@ int main(int argc, char *argv[]) {
 	print_elf_header(h);
 #endif
 	if (!is_elf(h)) {
-		dprintf(STDERR_FILENO, "Not an ELF file\n");
+		ft_dprintf(STDERR_FILENO, "Not an ELF file\n");
 		exit(1);
 	}
 	if (!is_64bit(h)) {
-		dprintf(STDERR_FILENO, "File architecture not suported. x86_64 only\n");
+		ft_dprintf(STDERR_FILENO, "File architecture not suported. x86_64 only\n");
 		exit(1);
 	}
 	// print section headers
@@ -134,14 +135,14 @@ int main(int argc, char *argv[]) {
 			symtab_header = &sht[i];
 		}
 		if (sht[i].sh_type == SHT_STRTAB) {
-			if (strcmp(shstrtab + sht[i].sh_name, ".strtab") == 0) {
+			if (ft_strcmp(shstrtab + sht[i].sh_name, ".strtab") == 0) {
 				strtab = (char *)(map + sht[i].sh_offset);
 			}
 		}
 	}
 	// Print symbol table
 	if (!symtab_header) {
-		dprintf(STDERR_FILENO, "No symbol table found\n");
+		ft_dprintf(STDERR_FILENO, "No symbol table found\n");
 		exit(1);
 	}
 	// In order to sort the symbols, we need to read the entire symbol table
@@ -163,9 +164,9 @@ int main(int argc, char *argv[]) {
 		char type = get_symbol_type(sym, sht);
 		if (type == 'A') continue; // Debugger only?
 		if (type != 'U' && type != 'w') {
-				printf("%016lx %c %s\n", sym->st_value, type, name);
+				ft_printf("%016lx %c %s\n", sym->st_value, type, name);
 		} else {
-				printf("%s %c %s\n", "                ", type, name);
+				ft_printf("%s %c %s\n", "                ", type, name);
 		}
 	}
 	close(fd);

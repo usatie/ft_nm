@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include "ft_printf.h"
 #include <elf.h>
 
 char * string_of_e_type(uint16_t e_type) {
@@ -41,42 +41,42 @@ char * string_of_sh_type(uint32_t sh_type) {
 }
 
 void print_elf_header(Elf64_Ehdr *h) {
-	printf("e_ident:     ");
+	ft_printf("e_ident:     ");
 	for (int i = 0; i < 16; ++i) {
-		printf("%02x", h->e_ident[i]);
-		if (i != 15) printf(" ");
-		if (i == 7) printf(" ");
+		ft_printf("%02x", h->e_ident[i]);
+		if (i != 15) ft_printf(" ");
+		if (i == 7) ft_printf(" ");
 	}
-	printf("\n");
-	printf("e_type:      0x%x (%s)\n", h->e_type, string_of_e_type(h->e_type));
-	printf("e_machine:   0x%x\n", h->e_machine);
-	printf("e_version:   0x%x\n", h->e_version);
-	printf("e_entry:     0x%lx\n", h->e_entry);
-	printf("e_phoff:     0x%lx\n", h->e_phoff);
-	printf("e_shoff:     0x%lx\n", h->e_shoff);
-	printf("e_flags:     0x%x\n", h->e_flags);
-	printf("e_ehsize:    0x%x\n", h->e_ehsize);
-	printf("e_phentsize: 0x%x\n", h->e_phentsize);
-	printf("e_phnum:     0x%x\n", h->e_phnum);
-	printf("e_shentsize: 0x%x\n", h->e_shentsize);
-	printf("e_shnum:     0x%x\n", h->e_shnum);
-	printf("e_shstrndx:  0x%x\n", h->e_shstrndx);
+	ft_printf("\n");
+	ft_printf("e_type:      0x%x (%s)\n", h->e_type, string_of_e_type(h->e_type));
+	ft_printf("e_machine:   0x%x\n", h->e_machine);
+	ft_printf("e_version:   0x%x\n", h->e_version);
+	ft_printf("e_entry:     0x%lx\n", h->e_entry);
+	ft_printf("e_phoff:     0x%lx\n", h->e_phoff);
+	ft_printf("e_shoff:     0x%lx\n", h->e_shoff);
+	ft_printf("e_flags:     0x%x\n", h->e_flags);
+	ft_printf("e_ehsize:    0x%x\n", h->e_ehsize);
+	ft_printf("e_phentsize: 0x%x\n", h->e_phentsize);
+	ft_printf("e_phnum:     0x%x\n", h->e_phnum);
+	ft_printf("e_shentsize: 0x%x\n", h->e_shentsize);
+	ft_printf("e_shnum:     0x%x\n", h->e_shnum);
+	ft_printf("e_shstrndx:  0x%x\n", h->e_shstrndx);
 }
 
 void print_section_header(const Elf64_Shdr *sht, const char *shstrtab, int i) {
 	const char *name = shstrtab + sht[i].sh_name;
-	printf("Section %d (%s)\n", i, name);
-	printf("\tsh_name:      0x%x\n", sht[i].sh_name);
-	printf("\tsh_type:      0x%x (%s)\n", sht[i].sh_type, string_of_sh_type(sht[i].sh_type));
-	printf("\tsh_flags:     0x%lx\n", sht[i].sh_flags);
-	printf("\tsh_addr:      0x%lx\n", sht[i].sh_addr);
-	printf("\tsh_offset:    0x%lx\n", sht[i].sh_offset);
-	printf("\tsh_size:      0x%lx\n", sht[i].sh_size);
-	printf("\tsh_link:      0x%x\n", sht[i].sh_link);
-	printf("\tsh_info:      0x%x\n", sht[i].sh_info);
-	printf("\tsh_addralign: 0x%lx\n", sht[i].sh_addralign);
-	printf("\tsh_entsize:   0x%lx\n", sht[i].sh_entsize);
-	printf("\n");
+	ft_printf("Section %d (%s)\n", i, name);
+	ft_printf("\tsh_name:      0x%x\n", sht[i].sh_name);
+	ft_printf("\tsh_type:      0x%x (%s)\n", sht[i].sh_type, string_of_sh_type(sht[i].sh_type));
+	ft_printf("\tsh_flags:     0x%lx\n", sht[i].sh_flags);
+	ft_printf("\tsh_addr:      0x%lx\n", sht[i].sh_addr);
+	ft_printf("\tsh_offset:    0x%lx\n", sht[i].sh_offset);
+	ft_printf("\tsh_size:      0x%lx\n", sht[i].sh_size);
+	ft_printf("\tsh_link:      0x%x\n", sht[i].sh_link);
+	ft_printf("\tsh_info:      0x%x\n", sht[i].sh_info);
+	ft_printf("\tsh_addralign: 0x%lx\n", sht[i].sh_addralign);
+	ft_printf("\tsh_entsize:   0x%lx\n", sht[i].sh_entsize);
+	ft_printf("\n");
 }
 
 char *string_of_symbol_type(uint8_t st_info) {
@@ -105,14 +105,14 @@ char *string_of_symbol_binding(uint8_t st_info) {
 
 void print_symbols(Elf64_Sym *symtab, char *strtab, int num_symbols) {
 	for (int i = 0; i < num_symbols; ++i) {
-			printf("Symbol %d\n", i);
-			printf("\tst_name: 0x%x (%s)\n", symtab[i].st_name, strtab + symtab[i].st_name);
-			printf("\tst_info: 0x%x\n", symtab[i].st_info);
-			printf("\tst_other: 0x%x\n", symtab[i].st_other);
-			printf("\tst_shndx: 0x%x\n", symtab[i].st_shndx);
-			printf("\tst_value: 0x%lx\n", symtab[i].st_value);
-			printf("\tst_size: 0x%lx\n", symtab[i].st_size);
-			printf("\n");
+			ft_printf("Symbol %d\n", i);
+			ft_printf("\tst_name: 0x%x (%s)\n", symtab[i].st_name, strtab + symtab[i].st_name);
+			ft_printf("\tst_info: 0x%x\n", symtab[i].st_info);
+			ft_printf("\tst_other: 0x%x\n", symtab[i].st_other);
+			ft_printf("\tst_shndx: 0x%x\n", symtab[i].st_shndx);
+			ft_printf("\tst_value: 0x%lx\n", symtab[i].st_value);
+			ft_printf("\tst_size: 0x%lx\n", symtab[i].st_size);
+			ft_printf("\n");
 	}
 }
 

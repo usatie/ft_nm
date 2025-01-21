@@ -3,12 +3,13 @@ CC=cc
 CFLAGS=-Wall -Werror -Wextra
 SRCS=$(wildcard src/*.c)
 OBJS=$(SRCS:%.c=%.o)
-INC=-I./include
+INC=-I./include -I./libft/include
+LIBFT=libft/libft.a
 
 all: $(NAME)
 
-$(NAME): $(OBJS)
-	$(CC) -o $(NAME) $(OBJS) $(CFLAGS)
+$(NAME): $(OBJS) $(LIBFT)
+	$(CC) -o $(NAME) $(OBJS) $(CFLAGS) $(LIBFT)
 
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS) $(INC)
@@ -29,3 +30,8 @@ drun:
 
 test: all
 	$(MAKE) run -C test
+
+$(LIBFT):
+	$(MAKE) -C libft
+
+.PHONY: all clean fclean re dbuild drun test
