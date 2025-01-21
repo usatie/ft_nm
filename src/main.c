@@ -95,6 +95,26 @@ char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
   return '?'; // Unknown type
 }
 
+#define CHECK_BOUNDARY(ptr, index, entsize)                                    \
+  if ((__off_t)(((char *)ptr - (char *)map) + (index + 1) * entsize) >         \
+      st.st_size) {                                                            \
+    ft_dprintf(STDERR_FILENO, "CHECK_BOUNDARY failed %s %s %s\n", #ptr,        \
+               #index, #entsize);                                              \
+    exit(1);                                                                   \
+  }
+
+#define CHECK_CSTRING_BOUNDARY(str)                                            \
+  {                                                                            \
+    char *tmp = str;                                                           \
+    while (*tmp && (__off_t)(tmp - (char *)map) < st.st_size) {                \
+      ++tmp;                                                                   \
+    }                                                                          \
+    if ((__off_t)(tmp - (char *)map) >= st.st_size) {                          \
+      ft_dprintf(STDERR_FILENO, "CHECK_CSTRING_BOUNDARY failed\n");            \
+      exit(1);                                                                 \
+    }                                                                          \
+  }
+
 int main(int argc, char *argv[]) {
   if (argc != 2) {
     usage_error();
@@ -112,6 +132,10 @@ int main(int argc, char *argv[]) {
 #if DEBUG
   ft_printf("File size: %ld\n", st.st_size);
 #endif
+  if (st.st_size < (__off_t)sizeof(Elf64_Ehdr)) {
+    ft_dprintf(STDERR_FILENO, "File too small to be an ELF file\n");
+    exit(1);
+  }
   void *map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (map == MAP_FAILED) {
     perror("mmap");
@@ -131,7 +155,12 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   // print section headers
+  if (sizeof(Elf64_Shdr) != h->e_shentsize) {
+    ft_dprintf(STDERR_FILENO, "Invalid section header size\n");
+    exit(1);
+  }
   Elf64_Shdr *sht = (Elf64_Shdr *)(map + h->e_shoff);
+  CHECK_BOUNDARY(sht, h->e_shstrndx, h->e_shentsize);
   Elf64_Shdr *shstrtab_header = &sht[h->e_shstrndx];
   char *shstrtab = (char *)(map + shstrtab_header->sh_offset);
   char *strtab = NULL;
@@ -140,10 +169,12 @@ int main(int argc, char *argv[]) {
 #if DEBUG
     print_section_header(sht, shstrtab, i);
 #endif
+    CHECK_BOUNDARY(sht, i, h->e_shentsize);
     if (sht[i].sh_type == SHT_SYMTAB) {
       symtab_header = &sht[i];
     }
     if (sht[i].sh_type == SHT_STRTAB) {
+      CHECK_CSTRING_BOUNDARY(shstrtab + sht[i].sh_name);
       if (ft_strcmp(shstrtab + sht[i].sh_name, ".strtab") == 0) {
         strtab = (char *)(map + sht[i].sh_offset);
       }
