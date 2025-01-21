@@ -35,7 +35,9 @@ bool is_64bit(Elf64_Ehdr *h) {
 void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
 	for (int i = 0; i < num_symbols; ++i) {
 		for (int j = i + 1; j < num_symbols; ++j) {
-			if (ft_strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name) > 0) {
+			int cmpval = ft_strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name);
+			bool less = cmpval < 0 || (cmpval == 0 && symtab[i].st_value < symtab[j].st_value);
+			if (!less) {
 				Elf64_Sym tmp = symtab[i];
 				symtab[i] = symtab[j];
 				symtab[j] = tmp;
@@ -151,7 +153,7 @@ int main(int argc, char *argv[]) {
 		perror("malloc");
 		exit(1);
 	}
-	memcpy(symtab, map + symtab_header->sh_offset, symtab_header->sh_size);
+	ft_memcpy(symtab, map + symtab_header->sh_offset, symtab_header->sh_size);
 	int num_symbols = symtab_header->sh_size / sizeof(Elf64_Sym);
 #if DEBUG
 	print_symbols(symtab, strtab, num_symbols);
