@@ -48,8 +48,6 @@ void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
 
 char get_symbol_type(const Elf64_Sym *sym, const Elf64_Shdr *shdrs) {
     unsigned char bind = ELF64_ST_BIND(sym->st_info);
-    unsigned char type = ELF64_ST_TYPE(sym->st_info);
-	(void)type;
 	// Weak symbol
 	if (bind == STB_WEAK) {
 		// TODO: 'W' if a default value is specified
@@ -163,12 +161,13 @@ int main(int argc, char *argv[]) {
 		Elf64_Sym *sym = &symtab[i];
 		if (sym->st_name == 0) continue;
 		const char *name = strtab + sym->st_name;
-		char type = get_symbol_type(sym, sht);
-		if (type == 'A') continue; // Debugger only?
-		if (type != 'U' && type != 'w') {
-				ft_printf("%016lx %c %s\n", sym->st_value, type, name);
+		char type_char = get_symbol_type(sym, sht);
+		unsigned char type = ELF64_ST_TYPE(sym->st_info);
+		if (type == STT_FILE) continue; // FILE symbol type is for debugging
+		if (type_char != 'U' && type_char != 'w') {
+				ft_printf("%016lx %c %s\n", sym->st_value, type_char, name);
 		} else {
-				ft_printf("%s %c %s\n", "                ", type, name);
+				ft_printf("%s %c %s\n", "                ", type_char, name);
 		}
 	}
 	close(fd);
