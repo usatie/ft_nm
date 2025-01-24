@@ -1,6 +1,12 @@
 #!/bin/bash -e
 echo "./ft_nm hello"
 diff <(../ft_nm hello) <(nm hello) && echo "OK" || echo "KO"
+echo "./ft_nm hello.o"
+diff <(../ft_nm hello.o) <(nm hello.o) && echo "OK" || echo "KO"
+echo "./ft_nm hello_32_bit"
+diff <(../ft_nm hello_32_bit) <(nm hello_32_bit) && echo "OK" || echo "KO"
+echo "./ft_nm hello_32_bit.o"
+diff <(../ft_nm hello_32_bit.o) <(nm hello_32_bit.o) && echo "OK" || echo "KO"
 echo "./ft_nm absolute_symbol.o"
 diff <(../ft_nm absolute_symbol.o) <(nm absolute_symbol.o) && echo "OK" || echo "KO"
 echo "./ft_nm ft_nm"

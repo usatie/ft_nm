@@ -57,14 +57,14 @@ void usage_error() {
   exit(1);
 }
 
-bool is_elf(Elf64_Ehdr *h) {
-  if (h->e_ident[EI_MAG0] != 0x7f)
+bool is_elf(const unsigned char *e_ident) {
+  if (e_ident[EI_MAG0] != 0x7f)
     return false;
-  if (h->e_ident[EI_MAG1] != 'E')
+  if (e_ident[EI_MAG1] != 'E')
     return false;
-  if (h->e_ident[EI_MAG2] != 'L')
+  if (e_ident[EI_MAG2] != 'L')
     return false;
-  if (h->e_ident[EI_MAG3] != 'F')
+  if (e_ident[EI_MAG3] != 'F')
     return false;
   return true;
 }
@@ -107,7 +107,7 @@ void sort_symbols(Elf64_Sym *symtab, int num_symbols, char *strtab) {
       // Check if the symbol name is within bounds
       CHECK_CSTRING_BOUNDARY(strtab + symtab[j].st_name);
       int cmpval =
-          bsd_stricmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name);
+          ft_strcmp(strtab + symtab[i].st_name, strtab + symtab[j].st_name);
       bool less = cmpval < 0 ||
                   (cmpval == 0 && symtab[i].st_value < symtab[j].st_value);
       if (!less) {
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
 #if DEBUG
   ft_printf("File size: %ld\n", st.st_size);
 #endif
-  if (st.st_size < (__off_t)sizeof(Elf64_Ehdr)) {
+  if (st.st_size < (__off_t)EI_NIDENT) {
     ft_dprintf(STDERR_FILENO, "File too small to be an ELF file\n");
     exit(1);
   }
@@ -195,100 +195,112 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   // Check if we can safely read the ELF header
-  CHECK_SIZE(sizeof(Elf64_Ehdr), "File too small for ELF header");
-  Elf64_Ehdr *h = (Elf64_Ehdr *)map;
-#if DEBUG
-  // print ELF header
-  print_elf_header(h);
-#endif
-  if (!is_elf(h)) {
+  const unsigned char *e_ident = (unsigned char *)map;
+  if (!is_elf(e_ident)) {
     ft_dprintf(STDERR_FILENO, "Not an ELF file\n");
     exit(1);
   }
-  if (!is_64bit(h)) {
-    ft_dprintf(STDERR_FILENO, "File architecture not suported. x86_64 only\n");
-    exit(1);
-  }
-  // print section headers
-  if (sizeof(Elf64_Shdr) != h->e_shentsize) {
-    ft_dprintf(STDERR_FILENO, "Invalid section header size\n");
-    exit(1);
-  }
-  // Check if section header table is within bounds
-  CHECK_OFFSET_SIZE(h->e_shoff, h->e_shnum * h->e_shentsize,
-                    "Section header table extends beyond file");
-  Elf64_Shdr *sht = (Elf64_Shdr *)(map + h->e_shoff);
-  CHECK_BOUNDARY(sht, h->e_shstrndx, h->e_shentsize);
-  Elf64_Shdr *shstrtab_header = &sht[h->e_shstrndx];
-  // Check if section string table is within bounds
-  CHECK_OFFSET_SIZE(shstrtab_header->sh_offset, shstrtab_header->sh_size,
-                    "Section string table extends beyond file");
-  char *shstrtab = (char *)(map + shstrtab_header->sh_offset);
-  char *strtab = NULL;
-  Elf64_Shdr *symtab_header = NULL;
-  for (int i = 0; i < h->e_shnum; ++i) {
-    CHECK_BOUNDARY(sht, i, h->e_shentsize);
-    Elf64_Shdr *current_shdr = &sht[i];
+  // Determine the ELF class
+  unsigned char elf_class = e_ident[EI_CLASS];
+  if (elf_class == ELFCLASS64) {
+    CHECK_SIZE(sizeof(Elf64_Ehdr), "File too small for ELF header");
+    Elf64_Ehdr *h = (Elf64_Ehdr *)map;
 #if DEBUG
-    print_section_header(sht, shstrtab, i);
+    // print ELF header
+    print_elf_header(h);
 #endif
-    if (current_shdr->sh_type == SHT_SYMTAB) {
-      symtab_header = current_shdr;
-      // Check if symbol table is within bounds
-      CHECK_OFFSET_SIZE(symtab_header->sh_offset, symtab_header->sh_size,
-                        "Symbol table extends beyond file");
-    }
-    if (current_shdr->sh_type == SHT_STRTAB) {
-      CHECK_CSTRING_BOUNDARY(shstrtab + current_shdr->sh_name);
-      if (ft_strcmp(shstrtab + current_shdr->sh_name, ".strtab") == 0) {
-        strtab = (char *)(map + current_shdr->sh_offset);
-        // Check if string table is within bounds
-        CHECK_OFFSET_SIZE(current_shdr->sh_offset, current_shdr->sh_size,
-                          "String table extends beyond file");
-      }
-    }
-  }
-  // Print symbol table
-  if (!symtab_header) {
-    ft_dprintf(STDERR_FILENO, "No symbol table found\n");
-    exit(1);
-  }
-  // In order to sort the symbols, we need to read the entire symbol table
-  Elf64_Sym *symtab = malloc(symtab_header->sh_size);
-  if (!symtab) {
-    perror("malloc");
-    exit(1);
-  }
-  ft_memcpy(symtab, map + symtab_header->sh_offset, symtab_header->sh_size);
-  int num_symbols = symtab_header->sh_size / sizeof(Elf64_Sym);
-#if DEBUG
-  print_symbols(symtab, strtab, num_symbols);
-#endif
-  sort_symbols(symtab, num_symbols, strtab);
-  for (int i = 0; i < num_symbols; ++i) {
-    Elf64_Sym *sym = &symtab[i];
-    if (sym->st_name == 0)
-      continue;
-    // Check if symbol name is within string table bounds
-    if (sym->st_name >= symtab_header->sh_size) {
+    if (!is_64bit(h)) {
       ft_dprintf(STDERR_FILENO,
-                 "Symbol name offset extends beyond string table\n");
+                 "File architecture not suported. x86_64 only\n");
       exit(1);
     }
-    const char *name = strtab + sym->st_name;
-    CHECK_CSTRING_BOUNDARY(name);
-    char type_char = get_symbol_type(sym, sht, h->e_shnum);
-    unsigned char type = ELF64_ST_TYPE(sym->st_info);
-    if (type == STT_FILE)
-      continue; // FILE symbol type is for debugging
-    if (type_char != 'U' && type_char != 'w') {
-      ft_printf("%016lx %c %s\n", sym->st_value, type_char, name);
-    } else {
-      ft_printf("%s %c %s\n", "                ", type_char, name);
+    // print section headers
+    if (sizeof(Elf64_Shdr) != h->e_shentsize) {
+      ft_dprintf(STDERR_FILENO, "Invalid section header size\n");
+      exit(1);
     }
+    // Check if section header table is within bounds
+    CHECK_OFFSET_SIZE(h->e_shoff, h->e_shnum * h->e_shentsize,
+                      "Section header table extends beyond file");
+    Elf64_Shdr *sht = (Elf64_Shdr *)(map + h->e_shoff);
+    CHECK_BOUNDARY(sht, h->e_shstrndx, h->e_shentsize);
+    Elf64_Shdr *shstrtab_header = &sht[h->e_shstrndx];
+    // Check if section string table is within bounds
+    CHECK_OFFSET_SIZE(shstrtab_header->sh_offset, shstrtab_header->sh_size,
+                      "Section string table extends beyond file");
+    char *shstrtab = (char *)(map + shstrtab_header->sh_offset);
+    char *strtab = NULL;
+    Elf64_Shdr *symtab_header = NULL;
+    for (int i = 0; i < h->e_shnum; ++i) {
+      CHECK_BOUNDARY(sht, i, h->e_shentsize);
+      Elf64_Shdr *current_shdr = &sht[i];
+#if DEBUG
+      print_section_header(sht, shstrtab, i);
+#endif
+      if (current_shdr->sh_type == SHT_SYMTAB) {
+        symtab_header = current_shdr;
+        // Check if symbol table is within bounds
+        CHECK_OFFSET_SIZE(symtab_header->sh_offset, symtab_header->sh_size,
+                          "Symbol table extends beyond file");
+      }
+      if (current_shdr->sh_type == SHT_STRTAB) {
+        CHECK_CSTRING_BOUNDARY(shstrtab + current_shdr->sh_name);
+        if (ft_strcmp(shstrtab + current_shdr->sh_name, ".strtab") == 0) {
+          strtab = (char *)(map + current_shdr->sh_offset);
+          // Check if string table is within bounds
+          CHECK_OFFSET_SIZE(current_shdr->sh_offset, current_shdr->sh_size,
+                            "String table extends beyond file");
+        }
+      }
+    }
+    // Print symbol table
+    if (!symtab_header) {
+      ft_dprintf(STDERR_FILENO, "No symbol table found\n");
+      exit(1);
+    }
+    // In order to sort the symbols, we need to read the entire symbol table
+    Elf64_Sym *symtab = malloc(symtab_header->sh_size);
+    if (!symtab) {
+      perror("malloc");
+      exit(1);
+    }
+    ft_memcpy(symtab, map + symtab_header->sh_offset, symtab_header->sh_size);
+    int num_symbols = symtab_header->sh_size / sizeof(Elf64_Sym);
+#if DEBUG
+    print_symbols(symtab, strtab, num_symbols);
+#endif
+    sort_symbols(symtab, num_symbols, strtab);
+    for (int i = 0; i < num_symbols; ++i) {
+      Elf64_Sym *sym = &symtab[i];
+      if (sym->st_name == 0)
+        continue;
+      // Check if symbol name is within string table bounds
+      if (sym->st_name >= symtab_header->sh_size) {
+        ft_dprintf(STDERR_FILENO,
+                   "Symbol name offset extends beyond string table\n");
+        exit(1);
+      }
+      const char *name = strtab + sym->st_name;
+      CHECK_CSTRING_BOUNDARY(name);
+      char type_char = get_symbol_type(sym, sht, h->e_shnum);
+      unsigned char type = ELF64_ST_TYPE(sym->st_info);
+      if (type == STT_FILE)
+        continue; // FILE symbol type is for debugging
+      if (type_char != 'U' && type_char != 'w') {
+        ft_printf("%016lx %c %s\n", sym->st_value, type_char, name);
+      } else {
+        ft_printf("%s %c %s\n", "                ", type_char, name);
+      }
+    }
+    free(symtab);
+  } else if (elf_class == ELFCLASS32) {
+    ft_dprintf(STDERR_FILENO, "TODO: implement 32-bit\n");
+    exit(1);
+  } else {
+    ft_dprintf(STDERR_FILENO, "Invalid ELF class value.\n");
+    exit(1);
   }
   close(fd);
-  free(symtab);
   munmap(map, st.st_size);
   return 0;
 }
