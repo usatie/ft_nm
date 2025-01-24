@@ -136,10 +136,13 @@ void sort_symbols_32(Elf32_Sym *symtab, int num_symbols, char *strtab) {
 char get_symbol_type_64(const Elf64_Sym *sym, const Elf64_Shdr *shdrs,
                         int num_sections) {
   unsigned char bind = ELF64_ST_BIND(sym->st_info);
+  unsigned char type = ELF64_ST_TYPE(sym->st_info);
   // Weak symbol
   if (bind == STB_WEAK) {
-    // TODO: 'W' if a default value is specified
-    return (sym->st_value != 0) ? 'W' : 'w';
+    if (type == STT_OBJECT) {
+      return (sym->st_shndx != SHN_UNDEF) ? 'V' : 'v';
+    }
+    return (sym->st_shndx != SHN_UNDEF) ? 'W' : 'w';
   }
   if (sym->st_shndx == SHN_UNDEF)
     return 'U';
@@ -186,10 +189,13 @@ char get_symbol_type_64(const Elf64_Sym *sym, const Elf64_Shdr *shdrs,
 char get_symbol_type_32(const Elf32_Sym *sym, const Elf32_Shdr *shdrs,
                         int num_sections) {
   unsigned char bind = ELF32_ST_BIND(sym->st_info);
+  unsigned char type = ELF32_ST_TYPE(sym->st_info);
   // Weak symbol
   if (bind == STB_WEAK) {
-    // TODO: 'W' if a default value is specified
-    return (sym->st_value != 0) ? 'W' : 'w';
+    if (type == STT_OBJECT) {
+      return (sym->st_shndx != SHN_UNDEF) ? 'V' : 'v';
+    }
+    return (sym->st_shndx != SHN_UNDEF) ? 'W' : 'w';
   }
   if (sym->st_shndx == SHN_UNDEF)
     return 'U';
