@@ -1,10 +1,12 @@
 #include "ft_printf.h"
 #include "libft.h"
 #include <elf.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>  // perror, strerror, STDERR_FILENO
 #include <stdlib.h> // exit
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -415,33 +417,33 @@ void do_nm_32bit() {
   free(symtab);
 }
 
-int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    usage_error();
-  }
-  int fd = open(argv[1], O_RDONLY);
+int do_nm(const char *filename) {
+  int fd = open(filename, O_RDONLY);
   if (fd < 0) {
-    perror("open");
-    exit(1);
+    ft_dprintf(STDERR_FILENO, "ft_nm: '%s': %s\n", filename, strerror(errno));
+    goto error_exit_do_nm_fd;
   }
   if (fstat(fd, &st) < 0) {
-    perror("fstat");
-    exit(1);
+    ft_dprintf(STDERR_FILENO, "ft_nm: '%s': %s\n", filename, strerror(errno));
+    goto error_exit_do_nm_fd;
+  }
+  if (st.st_size == 0) { // Empty file is valid
+    goto error_exit_do_nm_fd;
   }
   if (st.st_size < (__off_t)EI_NIDENT) {
     ft_dprintf(STDERR_FILENO, "File too small to be an ELF file\n");
-    exit(1);
+    goto error_exit_do_nm_fd;
   }
   map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (map == MAP_FAILED) {
     perror("mmap");
-    exit(1);
+    goto error_exit_do_nm_fd;
   }
   // Check if we can safely read the ELF header
   const unsigned char *e_ident = (unsigned char *)map;
   if (!is_elf(e_ident)) {
     ft_dprintf(STDERR_FILENO, "Not an ELF file\n");
-    exit(1);
+    goto error_exit_do_nm_mmap;
   }
   // Determine the ELF class
   unsigned char elf_class = e_ident[EI_CLASS];
@@ -451,9 +453,26 @@ int main(int argc, char *argv[]) {
     do_nm_32bit();
   } else {
     ft_dprintf(STDERR_FILENO, "Invalid ELF class value.\n");
-    exit(1);
+    goto error_exit_do_nm_mmap;
   }
   close(fd);
   munmap(map, st.st_size);
   return 0;
+error_exit_do_nm_mmap:
+  munmap(map, st.st_size);
+error_exit_do_nm_fd:
+  close(fd);
+  return -1;
+}
+
+int main(int argc, char *argv[]) {
+  if (argc != 2) {
+    usage_error();
+  }
+  int is_error = do_nm(argv[1]);
+  if (is_error) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
