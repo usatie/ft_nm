@@ -241,7 +241,7 @@ char get_symbol_type_32(const Elf32_Sym *sym, const Elf32_Shdr *shdrs,
   return '?'; // Unknown type
 }
 
-void do_nm_64bit() {
+void do_nm_64bit(const char *filename, bool print_filename) {
   CHECK_SIZE(sizeof(Elf64_Ehdr), "File too small for ELF header");
   Elf64_Ehdr *h = (Elf64_Ehdr *)map;
 #if DEBUG
@@ -304,6 +304,9 @@ void do_nm_64bit() {
   print_symbols(symtab, strtab, num_symbols);
 #endif
   sort_symbols_64(symtab, num_symbols, strtab);
+  if (print_filename) {
+    ft_printf("\n%s:\n", filename);
+  }
   for (int i = 0; i < num_symbols; ++i) {
     Elf64_Sym *sym = &symtab[i];
     if (sym->st_name == 0)
@@ -329,7 +332,7 @@ void do_nm_64bit() {
   free(symtab);
 }
 
-void do_nm_32bit() {
+void do_nm_32bit(const char *filename, bool print_filename) {
   CHECK_SIZE(sizeof(Elf32_Ehdr), "File too small for ELF header");
   Elf32_Ehdr *h = (Elf32_Ehdr *)map;
 #if DEBUG
@@ -392,6 +395,9 @@ void do_nm_32bit() {
   print_symbols(symtab, strtab, num_symbols);
 #endif
   sort_symbols_32(symtab, num_symbols, strtab);
+  if (print_filename) {
+    ft_printf("\n%s:\n", filename);
+  }
   for (int i = 0; i < num_symbols; ++i) {
     Elf32_Sym *sym = &symtab[i];
     if (sym->st_name == 0)
@@ -417,7 +423,7 @@ void do_nm_32bit() {
   free(symtab);
 }
 
-int do_nm(const char *filename) {
+int do_nm(const char *filename, bool print_filename) {
   int fd = open(filename, O_RDONLY);
   if (fd < 0) {
     ft_dprintf(STDERR_FILENO, "ft_nm: '%s': %s\n", filename, strerror(errno));
@@ -448,9 +454,9 @@ int do_nm(const char *filename) {
   // Determine the ELF class
   unsigned char elf_class = e_ident[EI_CLASS];
   if (elf_class == ELFCLASS64) {
-    do_nm_64bit();
+    do_nm_64bit(filename, print_filename);
   } else if (elf_class == ELFCLASS32) {
-    do_nm_32bit();
+    do_nm_32bit(filename, print_filename);
   } else {
     ft_dprintf(STDERR_FILENO, "Invalid ELF class value.\n");
     goto error_exit_do_nm_mmap;
@@ -466,10 +472,20 @@ error_exit_do_nm_fd:
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
+  if (argc < 2) {
     usage_error();
   }
-  int is_error = do_nm(argv[1]);
+  int is_error;
+  if (argc == 2) {
+    is_error = do_nm(argv[1], false);
+  } else {
+    for (int i = 1; i < argc; i++) {
+      int retval = do_nm(argv[i], true);
+      if (is_error == 0) {
+        is_error = retval;
+      }
+    }
+  }
   if (is_error) {
     return 1;
   } else {

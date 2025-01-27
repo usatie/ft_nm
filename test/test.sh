@@ -32,3 +32,7 @@ echo "./ft_nm src/main.o"
 diff <(../ft_nm ../src/main.o) <(nm ../src/main.o) && echo "OK" || echo "KO"
 echo "./ft_nm need_to_sort_dup_symbol"
 diff <(../ft_nm need_to_sort_dup_symbol) <(nm need_to_sort_dup_symbol) && echo "OK" || echo "KO"
+
+# Multiple files
+echo "./ft_nm hello.o hello hello.o weak_symbol absolute_symbol.o"
+diff <(../ft_nm hello.o hello weak_symbol absolute_symbol.o) <(nm hello.o hello weak_symbol absolute_symbol.o) && echo "OK" || echo "KO"
