@@ -60,3 +60,19 @@ test_nm hello.o hello weak_symbol absolute_symbol.o
 # Invalid files
 test_nm no_such_file
 test_nm hello.o no_such_file weak_symbol
+
+# Dynamic Libraries (on AWS EC2 Ubuntu)
+# test_nm /usr/lib/modules/6.8.0-1021-aws/vdso/vdso64.so
+# test_nm /usr/lib/modules/6.8.0-1021-aws/vdso/vdso32.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/32/libubsan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/32/libasan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/x32/libubsan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/x32/libasan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/libubsan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/libtsan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/libasan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/libhwasan.so
+# test_nm /usr/lib/gcc/x86_64-linux-gnu/13/liblsan.so
+# test_nm /usr/lib/linux-tools/6.8.0-1021-aws/libperf-jvmti.so
+# test_nm /usr/lib/linux-aws-tools-6.8.0-1021/libperf-jvmti.so
+
