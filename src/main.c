@@ -181,7 +181,7 @@ char get_symbol_type_64(const Elf64_Sym *sym, const Elf64_Shdr *shdrs,
   }
   // Read-only data sections (flags: Allocated, but not Writable nor Executable)
   if ((sec->sh_flags & SHF_ALLOC) && !(sec->sh_flags & SHF_WRITE) &&
-	  !(sec->sh_flags & SHF_EXECINSTR)) {
+      !(sec->sh_flags & SHF_EXECINSTR)) {
     return (bind == STB_LOCAL) ? 'r' : 'R';
   }
 
@@ -281,7 +281,7 @@ void do_nm_64bit(const char *filename, bool print_filename) {
     if (current_shdr->sh_type == SHT_STRTAB) {
       CHECK_CSTRING_BOUNDARY(shstrtab + current_shdr->sh_name);
       if (ft_strcmp(shstrtab + current_shdr->sh_name, ".strtab") == 0) {
-	strtab_header = current_shdr;
+        strtab_header = current_shdr;
         strtab = (char *)(map + current_shdr->sh_offset);
         // Check if string table is within bounds
         CHECK_OFFSET_SIZE(current_shdr->sh_offset, current_shdr->sh_size,
@@ -374,7 +374,7 @@ void do_nm_32bit(const char *filename, bool print_filename) {
     if (current_shdr->sh_type == SHT_STRTAB) {
       CHECK_CSTRING_BOUNDARY(shstrtab + current_shdr->sh_name);
       if (ft_strcmp(shstrtab + current_shdr->sh_name, ".strtab") == 0) {
-	strtab_header = current_shdr;
+        strtab_header = current_shdr;
         strtab = (char *)(map + current_shdr->sh_offset);
         // Check if string table is within bounds
         CHECK_OFFSET_SIZE(current_shdr->sh_offset, current_shdr->sh_size,
