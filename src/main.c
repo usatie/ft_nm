@@ -81,9 +81,9 @@ bool is_elf(const unsigned char *e_ident) {
 // Mon Dec  9 15:00:52 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
 int bsd_stricmp(const char *s1, const char *s2) {
   while (*s1 || *s2) {
-    while (*s1 == '_')
+    while (!ft_isalpha(*s1))
       s1++;
-    while (*s2 == '_')
+    while (!ft_isalpha(*s2))
       s2++;
     if (ft_tolower(*s1) != ft_tolower(*s2)) {
       return ft_tolower(*(unsigned char *)s1) -
