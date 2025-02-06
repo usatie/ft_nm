@@ -475,7 +475,7 @@ int main(int argc, char *argv[]) {
   if (argc < 2) {
     usage_error();
   }
-  int is_error;
+  int is_error = 0;
   if (argc == 2) {
     is_error = do_nm(argv[1], false);
   } else {
