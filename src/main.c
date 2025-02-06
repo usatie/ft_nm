@@ -233,8 +233,8 @@ char get_symbol_type_32(const Elf32_Sym *sym, const Elf32_Shdr *shdrs,
     return (bind == STB_LOCAL) ? 'd' : 'D';
   }
   // Read-only data sections (flags: Allocated, but not Writable nor Executable)
-  if ((sec->sh_type == SHT_PROGBITS || sec->sh_type == SHT_NOTE) &&
-      (sec->sh_flags & SHF_ALLOC)) {
+  if ((sec->sh_flags & SHF_ALLOC) && !(sec->sh_flags & SHF_WRITE) &&
+      !(sec->sh_flags & SHF_EXECINSTR)) {
     return (bind == STB_LOCAL) ? 'r' : 'R';
   }
 
