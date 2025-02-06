@@ -323,8 +323,13 @@ void do_nm_64bit(const char *filename, bool print_filename) {
     CHECK_CSTRING_BOUNDARY(name);
     char type_char = get_symbol_type_64(sym, sht, h->e_shnum);
     unsigned char type = ELF64_ST_TYPE(sym->st_info);
+    // FILE symbol type is for debugging
     if (type == STT_FILE)
-      continue; // FILE symbol type is for debugging
+      continue;
+    // We don't print value for 'U', 'w', 'v' because:
+    //   'U' : undefined symbol
+    //   'w' : weak symbol (without default value)
+    //   'v' : weak object (with default value)
     if (type_char == 'U' || type_char == 'w' || type_char == 'v') {
       ft_printf("%s %c %s\n", "                ", type_char, name);
     } else {
@@ -416,8 +421,13 @@ void do_nm_32bit(const char *filename, bool print_filename) {
     CHECK_CSTRING_BOUNDARY(name);
     char type_char = get_symbol_type_32(sym, sht, h->e_shnum);
     unsigned char type = ELF32_ST_TYPE(sym->st_info);
+    // FILE symbol type is for debugging
     if (type == STT_FILE)
-      continue; // FILE symbol type is for debugging
+      continue;
+    // We don't print value for 'U', 'w', 'v' because:
+    //   'U' : undefined symbol
+    //   'w' : weak symbol (without default value)
+    //   'v' : weak object (with default value)
     if (type_char == 'U' || type_char == 'w' || type_char == 'v') {
       ft_printf("%s %c %s\n", "        ", type_char, name);
     } else {
