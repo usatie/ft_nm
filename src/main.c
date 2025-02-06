@@ -325,10 +325,10 @@ void do_nm_64bit(const char *filename, bool print_filename) {
     unsigned char type = ELF64_ST_TYPE(sym->st_info);
     if (type == STT_FILE)
       continue; // FILE symbol type is for debugging
-    if (type_char != 'U' && type_char != 'w') {
-      ft_printf("%016lx %c %s\n", sym->st_value, type_char, name);
-    } else {
+    if (type_char == 'U' || type_char == 'w' || type_char == 'v') {
       ft_printf("%s %c %s\n", "                ", type_char, name);
+    } else {
+      ft_printf("%016lx %c %s\n", sym->st_value, type_char, name);
     }
   }
   free(symtab);
@@ -418,10 +418,10 @@ void do_nm_32bit(const char *filename, bool print_filename) {
     unsigned char type = ELF32_ST_TYPE(sym->st_info);
     if (type == STT_FILE)
       continue; // FILE symbol type is for debugging
-    if (type_char != 'U' && type_char != 'w') {
-      ft_printf("%08lx %c %s\n", sym->st_value, type_char, name);
-    } else {
+    if (type_char == 'U' || type_char == 'w' || type_char == 'v') {
       ft_printf("%s %c %s\n", "        ", type_char, name);
+    } else {
+      ft_printf("%08lx %c %s\n", sym->st_value, type_char, name);
     }
   }
   free(symtab);
