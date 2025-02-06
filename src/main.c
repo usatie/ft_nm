@@ -264,6 +264,7 @@ void do_nm_64bit(const char *filename, bool print_filename) {
                     "Section string table extends beyond file");
   char *shstrtab = (char *)(map + shstrtab_header->sh_offset);
   char *strtab = NULL;
+  Elf64_Shdr *strtab_header = NULL;
   Elf64_Shdr *symtab_header = NULL;
   for (int i = 0; i < h->e_shnum; ++i) {
     CHECK_BOUNDARY(sht, i, h->e_shentsize);
@@ -280,6 +281,7 @@ void do_nm_64bit(const char *filename, bool print_filename) {
     if (current_shdr->sh_type == SHT_STRTAB) {
       CHECK_CSTRING_BOUNDARY(shstrtab + current_shdr->sh_name);
       if (ft_strcmp(shstrtab + current_shdr->sh_name, ".strtab") == 0) {
+	strtab_header = current_shdr;
         strtab = (char *)(map + current_shdr->sh_offset);
         // Check if string table is within bounds
         CHECK_OFFSET_SIZE(current_shdr->sh_offset, current_shdr->sh_size,
@@ -312,7 +314,7 @@ void do_nm_64bit(const char *filename, bool print_filename) {
     if (sym->st_name == 0)
       continue;
     // Check if symbol name is within string table bounds
-    if (sym->st_name >= symtab_header->sh_size) {
+    if (sym->st_name >= strtab_header->sh_size) {
       ft_dprintf(STDERR_FILENO,
                  "Symbol name offset extends beyond string table\n");
       exit(1);
@@ -356,6 +358,7 @@ void do_nm_32bit(const char *filename, bool print_filename) {
   char *shstrtab = (char *)(map + shstrtab_header->sh_offset);
   char *strtab = NULL;
   Elf32_Shdr *symtab_header = NULL;
+  Elf32_Shdr *strtab_header = NULL;
   for (int i = 0; i < h->e_shnum; ++i) {
     CHECK_BOUNDARY(sht, i, h->e_shentsize);
     Elf32_Shdr *current_shdr = &sht[i];
@@ -371,6 +374,7 @@ void do_nm_32bit(const char *filename, bool print_filename) {
     if (current_shdr->sh_type == SHT_STRTAB) {
       CHECK_CSTRING_BOUNDARY(shstrtab + current_shdr->sh_name);
       if (ft_strcmp(shstrtab + current_shdr->sh_name, ".strtab") == 0) {
+	strtab_header = current_shdr;
         strtab = (char *)(map + current_shdr->sh_offset);
         // Check if string table is within bounds
         CHECK_OFFSET_SIZE(current_shdr->sh_offset, current_shdr->sh_size,
@@ -403,7 +407,7 @@ void do_nm_32bit(const char *filename, bool print_filename) {
     if (sym->st_name == 0)
       continue;
     // Check if symbol name is within string table bounds
-    if (sym->st_name >= symtab_header->sh_size) {
+    if (sym->st_name >= strtab_header->sh_size) {
       ft_dprintf(STDERR_FILENO,
                  "Symbol name offset extends beyond string table\n");
       exit(1);
