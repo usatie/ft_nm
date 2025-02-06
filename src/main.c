@@ -149,9 +149,9 @@ char get_symbol_type_64(const Elf64_Sym *sym, const Elf64_Shdr *shdrs,
   if (sym->st_shndx == SHN_UNDEF)
     return 'U';
   if (sym->st_shndx == SHN_ABS)
-    return 'A';
+    return (bind == STB_LOCAL) ? 'a' : 'A';
   if (sym->st_shndx == SHN_COMMON)
-    return 'C';
+    return (bind == STB_LOCAL) ? 'c' : 'C';
   if (sym->st_shndx >= SHN_LORESERVE)
     return '?'; // TODO: Unknown type for now
 
@@ -202,9 +202,9 @@ char get_symbol_type_32(const Elf32_Sym *sym, const Elf32_Shdr *shdrs,
   if (sym->st_shndx == SHN_UNDEF)
     return 'U';
   if (sym->st_shndx == SHN_ABS)
-    return 'A';
+    return (bind == STB_LOCAL) ? 'a' : 'A';
   if (sym->st_shndx == SHN_COMMON)
-    return 'C';
+    return (bind == STB_LOCAL) ? 'c' : 'C';
   if (sym->st_shndx >= SHN_LORESERVE)
     return '?'; // TODO: Unknown type for now
 
